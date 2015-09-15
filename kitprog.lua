@@ -18,13 +18,13 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program; if not, see <http://www.gnu.org/licenses/>.
 
--- Usage: wireshark -X lua_script:sysclk-lwla-dissector.lua
+-- Usage: wireshark -X lua_script:kitprog.lua
 --
 -- It is not advisable to install this dissector globally, since
 -- it will try to interpret the communication of any USB device
 -- using the vendor-specific interface class.
 
--- Create custom protocol for the LWLA logic analyzer.
+-- Create custom protocol for the KitProg.
 p_kitprog = Proto("kitprog", "Cypress Semiconductor Protocol for JTAG and SWD debuggers")
 
 -- Control commands either read or write
