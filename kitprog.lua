@@ -85,6 +85,14 @@ p_kitprog.fields.attempts = ProtoField.uint8("kitprog.attempts", "Maximum target
 
 p_kitprog.fields.status = ProtoField.uint8("kitprog.status", "KitProg status", base.HEX, statuses)
 
+p_kitprog.fields.interrupt_control = ProtoField.uint8("kitprog.control", "Control", base.HEX, nil)
+p_kitprog.fields.interrupt_control_direction = ProtoField.uint8("kitprog.control.direction", "Direction", base.DEC, {[0]="Not set", [1]="Set"}, 0x01)
+p_kitprog.fields.interrupt_control_start = ProtoField.uint8("kitprog.control.start", "Start", base.DEC, {[0]="Not set", [1]="Set"}, 0x02)
+p_kitprog.fields.interrupt_control_restart = ProtoField.uint8("kitprog.control.restart", "Restart", base.DEC, {[0]="Not set", [1]="Set"}, 0x04)
+p_kitprog.fields.interrupt_control_stop = ProtoField.uint8("kitprog.control.stop", "Stop", base.DEC, {[0]="Not set", [1]="Set"}, 0x08)
+p_kitprog.fields.interrupt_control_restart_hw = ProtoField.uint8("kitprog.control.restart_hw", "Restart HW", base.DEC, {[0]="Not set", [1]="Set"}, 0x10)
+p_kitprog.fields.interrupt_control_configure = ProtoField.uint8("kitprog.control.configure", "Configure", base.DEC, {[0]="Not set", [1]="Set"}, 0x20)
+
 p_kitprog.fields.swd_out = ProtoField.bytes("kitprog.swd_out", "SWD data out")
 p_kitprog.fields.swd_in = ProtoField.bytes("kitprog.swd_in", "SWD data in")
 
@@ -127,13 +135,38 @@ local function dissect_control_response(buffer, pinfo, subtree)
     subtree:add(p_kitprog.fields.status, buffer(0,1))
 end
 
+-- Dissect KitProg interrupt command messages.
+local function dissect_interrupt_command(buffer, pinfo, subtree)
+    local control_tree = subtree:add(p_kitprog.fields.interrupt_control, buffer(0,1))
+    control_tree:add(p_kitprog.fields.interrupt_control_direction, buffer(0,1))
+    control_tree:add(p_kitprog.fields.interrupt_control_start, buffer(0,1))
+    control_tree:add(p_kitprog.fields.interrupt_control_restart, buffer(0,1))
+    control_tree:add(p_kitprog.fields.interrupt_control_stop, buffer(0,1))
+    control_tree:add(p_kitprog.fields.interrupt_control_restart_hw, buffer(0,1))
+    control_tree:add(p_kitprog.fields.interrupt_control_configure, buffer(0,1))
+end
+
+-- Dissect KitProg interrupt response messages.
+local function dissect_interrupt_response(buffer, pinfo, subtree)
+end
+
 -- Main KitProg dissector function.
 function p_kitprog.dissector(buffer, pinfo, tree)
     local transfer_type = tonumber(tostring(f_transfer_type()))
     local endpoint = tonumber(tostring(f_endpoint()))
     local urb_type = tonumber(tostring(f_urb_type()))
 
-    if ( (transfer_type == 2) and (endpoint == 0) ) then
+    if (transfer_type == 1) then
+        -- Interrupt transfers
+        local subtree = tree:add(p_kitprog, buffer(), "KitProg Interrupt")
+
+        -- We only care about the IN and OUT endpoints
+        if ( (urb_type == 0x53) and (endpoint == 4) ) then
+            dissect_interrupt_command(buffer, pinfo, subtree)
+        elseif ( (urb_type == 0x43) and (endpoint == 3) ) then
+            dissect_interrupt_response(buffer, pinfo, subtree)
+        end
+    elseif ( (transfer_type == 2) and (endpoint == 0) ) then
         -- Control transfers to endpoint 0 only.
         local f_len = tonumber(tostring(f_len()))-64
         local subtree = tree:add(p_kitprog, buffer(), "KitProg Control")
