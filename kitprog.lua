@@ -85,6 +85,9 @@ p_kitprog.fields.attempts = ProtoField.uint8("kitprog.attempts", "Maximum target
 
 p_kitprog.fields.status = ProtoField.uint8("kitprog.status", "KitProg status", base.HEX, statuses)
 
+p_kitprog.fields.swd_out = ProtoField.bytes("kitprog.swd_out", "SWD data out")
+p_kitprog.fields.swd_in = ProtoField.bytes("kitprog.swd_in", "SWD data in")
+
 p_kitprog.fields.unknown = ProtoField.bytes("kitprog.unknown", "Unidentified message data")
 
 -- Referenced USB URB dissector fields.
@@ -131,18 +134,30 @@ end
 function p_kitprog.dissector(buffer, pinfo, tree)
     local transfer_type = tonumber(tostring(f_transfer_type()))
     local endpoint = tonumber(tostring(f_endpoint()))
+    local urb_type = tonumber(tostring(f_urb_type()))
 
-    -- Control transfers to endpoint 0 only.
     if ( (transfer_type == 2) and (endpoint == 0) ) then
-        local urb_type = tonumber(tostring(f_urb_type()))
+        -- Control transfers to endpoint 0 only.
         local f_len = tonumber(tostring(f_len()))-64
-        local subtree = tree:add(p_kitprog, buffer(), "KitProg")
+        local subtree = tree:add(p_kitprog, buffer(), "KitProg Control")
 
         -- Command-carrying packets only.
         if ( (urb_type == 0x53) ) then
             dissect_control_command(buffer, pinfo, subtree)
         elseif (urb_type == 0x43) then
             dissect_control_response(buffer, pinfo, subtree)
+        end
+    elseif (transfer_type == 3) then
+        -- Bulk transfers
+        local subtree = tree:add(p_kitprog, buffer(), "KitProg Bulk")
+
+        -- We only care about the IN and OUT endpoints
+        if ( (urb_type == 0x53) and (endpoint == 2) ) then
+            -- Data out
+            subtree:add(p_kitprog.fields.swd_out, buffer())
+        elseif ( (urb_type == 0x43) and (endpoint == 1) ) then
+            -- Data in
+            subtree:add(p_kitprog.fields.swd_in, buffer())
         end
     end
     return 0
