@@ -79,8 +79,8 @@ p_kitprog.fields.mode = ProtoField.uint8("kitprog.mode", "Programming operation 
 
 p_kitprog.fields.protocol = ProtoField.uint8("kitprog.protocol", "KitProg protocol type", base.HEX, protocols)
 
-p_kitprog.fields.device_type = ProtoField.uint8("kitprog.device_type", "Target device type", base.HEX, device_types)
-p_kitprog.fields.acquire_mode = ProtoField.uint8("kitprog.acquire_mode", "Target acquire mode", base.HEX, acquire_modes)
+p_kitprog.fields.device_type = ProtoField.uint8("kitprog.device_type", "Target device type", base.HEX, device_types, 0x0f)
+p_kitprog.fields.acquire_mode = ProtoField.uint8("kitprog.acquire_mode", "Target acquire mode", base.HEX, acquire_modes, 0xf0)
 p_kitprog.fields.attempts = ProtoField.uint8("kitprog.attempts", "Maximum target acquisition attempts", base.DEC)
 
 p_kitprog.fields.status = ProtoField.uint8("kitprog.status", "KitProg status", base.HEX, statuses)
@@ -116,11 +116,8 @@ local function dissect_control_command(buffer, pinfo, subtree)
     if (mode:uint() == 0x40) then
         subtree:add(p_kitprog.fields.protocol, buffer(3,1))
     elseif (mode:uint() == 0x42) then
-        local mode_dev = buffer(3,1):uint()
-        local device_type = bit.band(mode_dev, 0x0f)
-        local acquire_mode = bit.rshift(mode_dev, 4)
-        subtree:add(p_kitprog.fields.device_type, device_type)
-        subtree:add(p_kitprog.fields.acquire_mode, acquire_mode)
+        subtree:add(p_kitprog.fields.device_type, buffer(3,1))
+        subtree:add(p_kitprog.fields.acquire_mode, buffer(3,1))
         subtree:add(p_kitprog.fields.attempts, buffer(4,1))
     end
 end
