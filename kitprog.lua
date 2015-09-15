@@ -27,6 +27,12 @@
 -- Create custom protocol for the KitProg.
 p_kitprog = Proto("kitprog", "Cypress Semiconductor Protocol for JTAG and SWD debuggers")
 
+-- Generic bit settings
+local generic_bit_settings = {
+    [0] = "Not set",
+    [1] = "Set"
+}
+
 -- Control commands either read or write
 local command_types = {
     [0x01] = "Read",
@@ -72,6 +78,21 @@ local statuses = {
     [0x01] = "OK, ACK"
 }
 
+-- Interrupt control directions
+local interrupt_control_directions = {
+    [0] = "Write",
+    [1] = "Read"
+}
+
+-- Interrupt transfer commands
+local interrupt_commands = {
+    [0x80] = "Get Power Setting",
+    [0x81] = "Get KitProg Version",
+    [0x82] = "Reset KitProg",
+    [0x8f] = "Configure Interface",
+    [0xa0] = "Enter Bootloader"
+}
+
 -- Create the fields exhibited by the protocol.
 p_kitprog.fields.command_type = ProtoField.uint8("kitprog.command_type", "Command type", base.HEX, command_types)
 p_kitprog.fields.command = ProtoField.uint8("kitprog.command", "Command ID", base.HEX, commands)
@@ -86,12 +107,14 @@ p_kitprog.fields.attempts = ProtoField.uint8("kitprog.attempts", "Maximum target
 p_kitprog.fields.status = ProtoField.uint8("kitprog.status", "KitProg status", base.HEX, statuses)
 
 p_kitprog.fields.interrupt_control = ProtoField.uint8("kitprog.control", "Control", base.HEX, nil)
-p_kitprog.fields.interrupt_control_direction = ProtoField.uint8("kitprog.control.direction", "Direction", base.DEC, {[0]="Not set", [1]="Set"}, 0x01)
-p_kitprog.fields.interrupt_control_start = ProtoField.uint8("kitprog.control.start", "Start", base.DEC, {[0]="Not set", [1]="Set"}, 0x02)
-p_kitprog.fields.interrupt_control_restart = ProtoField.uint8("kitprog.control.restart", "Restart", base.DEC, {[0]="Not set", [1]="Set"}, 0x04)
-p_kitprog.fields.interrupt_control_stop = ProtoField.uint8("kitprog.control.stop", "Stop", base.DEC, {[0]="Not set", [1]="Set"}, 0x08)
-p_kitprog.fields.interrupt_control_restart_hw = ProtoField.uint8("kitprog.control.restart_hw", "Restart HW", base.DEC, {[0]="Not set", [1]="Set"}, 0x10)
-p_kitprog.fields.interrupt_control_configure = ProtoField.uint8("kitprog.control.configure", "Configure", base.DEC, {[0]="Not set", [1]="Set"}, 0x20)
+p_kitprog.fields.interrupt_control_direction = ProtoField.uint8("kitprog.control.direction", "Direction", base.DEC, interrupt_control_directions, 0x01)
+p_kitprog.fields.interrupt_control_start = ProtoField.uint8("kitprog.control.start", "Start", base.DEC, generic_bit_settings, 0x02)
+p_kitprog.fields.interrupt_control_restart = ProtoField.uint8("kitprog.control.restart", "Restart", base.DEC, generic_bit_settings, 0x04)
+p_kitprog.fields.interrupt_control_stop = ProtoField.uint8("kitprog.control.stop", "Stop", base.DEC, generic_bit_settings, 0x08)
+p_kitprog.fields.interrupt_control_restart_hw = ProtoField.uint8("kitprog.control.restart_hw", "Restart HW", base.DEC, generic_bit_settings, 0x10)
+p_kitprog.fields.interrupt_control_configure = ProtoField.uint8("kitprog.control.configure", "Configure", base.DEC, generic_bit_settings, 0x20)
+
+p_kitprog.fields.interrupt_command = ProtoField.uint8("kitprog.control.command", "Command", base.HEX, interrupt_commands)
 
 p_kitprog.fields.swd_out = ProtoField.bytes("kitprog.swd_out", "SWD data out")
 p_kitprog.fields.swd_in = ProtoField.bytes("kitprog.swd_in", "SWD data in")
@@ -144,6 +167,8 @@ local function dissect_interrupt_command(buffer, pinfo, subtree)
     control_tree:add(p_kitprog.fields.interrupt_control_stop, buffer(0,1))
     control_tree:add(p_kitprog.fields.interrupt_control_restart_hw, buffer(0,1))
     control_tree:add(p_kitprog.fields.interrupt_control_configure, buffer(0,1))
+
+    subtree:add(p_kitprog.fields.interrupt_command, buffer(2,1))
 end
 
 -- Dissect KitProg interrupt response messages.
