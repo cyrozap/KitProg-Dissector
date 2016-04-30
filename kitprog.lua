@@ -1,6 +1,6 @@
 -- Cypress KitProg protocol dissector for Wireshark
 --
--- Copyright (C) 2015 Forest Crossman <cyrozap@gmail.com>
+-- Copyright (C) 2015-2016 Forest Crossman <cyrozap@gmail.com>
 --
 -- Based on the SysClk LWLA protocol dissector for Wireshark,
 -- Copyright (C) 2014 Daniel Elstner <daniel.kitta@gmail.com>
@@ -214,8 +214,9 @@ function p_kitprog.dissector(buffer, pinfo, tree)
             -- Data in
             subtree:add(p_kitprog.fields.swd_in, buffer())
         end
+    else
+        return 0
     end
-    return 0
 end
 
 function p_kitprog.init()
